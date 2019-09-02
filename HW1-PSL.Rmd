@@ -1,0 +1,114 @@
+---
+title: "Hw1-PSL"
+output:
+  pdf_document: default
+  html_document: default
+---
+```{r}
+set.seed(1)
+
+library(CVTuningCov)
+library(MASS)
+library(caret)
+library(lattice)
+
+#MU vector 
+mus = c(1,2,3,4,5) 
+
+#Sigma Matrix 
+sigma = AR1(5,rho=0.5)
+
+#1000 observation :- 5 dimentional 
+x= mvrnorm(n=1000 , mu=mus, Sigma =sigma)
+
+colnames(x) = c("X1", "X2", "X3", "X4", "X5")
+
+
+
+eps = rnorm(1000,0,1)
+
+y = x[,1]+x[,2]+(x[,3]-2.5)^2+eps
+
+obs = cbind(x,y)
+
+head(obs,3)
+
+
+trainX <- x[1:400,]
+trainY <- y[1:400]
+testX <- x[401:1000,]
+testY <- y[401:1000]
+
+
+fit <- knnreg(trainX, trainY, k = 5)
+plot(testY, predict(fit, testX))
+
+
+
+```
+
+```{r}
+summary(trainX)
+```
+
+
+```{r}
+###Nearest neighbors
+my_knn_regressor = function(x,y,k=5)
+{
+  if (!is.matrix(x))
+  {
+    x = as.matrix(x)
+  }
+  if (!is.matrix(y))
+  {
+    y = as.matrix(y)
+  }
+  my_knn = list()
+  my_knn[['points']] = x
+  my_knn[['value']] = y
+  my_knn[['k']] = k
+  attr(my_knn, "class") = "my_knn_regressor"
+  return(my_knn)
+}
+
+```
+
+
+```{r}
+compute_pairwise_distance=function(X,Y)
+{
+  xn = rowSums(X ** 2)
+  yn = rowSums(Y ** 2)
+  outer(xn, yn, '+') - 2 * tcrossprod(X, Y)
+}
+
+```
+
+
+```{r}
+predict.my_knn_regressor = function(my_knn,x)
+{
+  if (!is.matrix(x))
+  {
+    x = as.matrix(x)
+  }
+  ##Compute pairwise distance
+  dist_pair = compute_pairwise_distance(x,my_knn[['points']])
+  crossprod(apply(dist_pair,1,order) <= my_knn[['k']], my_knn[["value"]]) / my_knn[['k']]
+  #apply(dist_pair,1,order) orders the points by distance
+  #2. apply(dist_pair,1,order)<=my_knn[['k']] selects the k-closest points to each point in our new dataset 
+  #4. M %*% my_knn[['value']] / my_knn  sums the value of the k closest points and normalises it by k 
+
+  
+}
+
+```
+
+
+```{r}
+knn_class = my_knn_regressor(trainX, trainY,5)
+predict(knn_class, trainX)
+
+```
+
